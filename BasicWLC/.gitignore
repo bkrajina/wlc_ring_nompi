@@ -1,0 +1,16 @@
+data/*
+*.o
+trash/*
+.DS_store
+*.out
+tags
+*~
+.*.sw*
+.DS_Store
+*.mod
+vizualization/xyz/*
+vizualization/pdb/*
+vizualization/pdb0/*
+vizualization/png/*
+par-run-dir
+__pycache__
