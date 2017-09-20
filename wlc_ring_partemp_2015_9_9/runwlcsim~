@@ -1,0 +1,6 @@
+cd code
+gfortran -o wlcsim SIMcode/*f90 SIMcode/*f95 BDcode/*f95 DATAcode/*f95 MCcode/*f95 /usr/lib/liblapack.so
+cd ..
+mv code/wlcsim .
+mv data/* trash/.
+./wlcsim

@@ -1,0 +1,12 @@
+from numpy import *
+from Rg_moments_stat import *
+
+folder='data'
+nmax=100
+
+moments=Rg_moments_stat(folder,nmax)[0,:]
+
+rg=[sum(moments)]
+
+savetxt('data/RGYSQ_AVG',rg)
+

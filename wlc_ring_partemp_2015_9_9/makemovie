@@ -1,0 +1,7 @@
+cd savedata/movie
+
+rm xyz/*
+rm pdb/snap*
+
+chmod u+x mkpdbpoly.pl
+./mkpdbpoly.pl
