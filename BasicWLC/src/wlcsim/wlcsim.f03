@@ -1,6 +1,6 @@
 program main
     ! Loads in parameters from the input file.
-    ! Calculates simulation parameters from input parameters.
+    ! Calculates parameters used in simulation from input parameters.
     ! For each save point requested, uses either Bruno, Quinn, or Brad's
     ! simulators to step forwards (in time or Monte Carlo steps) and writes the
     ! output and (optionally) the simulation state needed to restart the
@@ -10,16 +10,21 @@ program main
     ! using the FLAP library (https://github.com/szaghi/FLAP) to leverage F03
     ! command-line interface features for taking input and output locations as
     ! command line arguments
-    use flap
-    ! structs that will hold simulation state
-    use params
+    use flap, only: command_line_interface
+
+    ! structs that will hold simulation params and state
+    use params, only: wlcsim_params, wlcsim_data, &
+        MAXFILENAMELEN, save_simulation_state, get_input_from_file, &
+        initialize_wlcsim_data, save_parameters, setup_runtime_floats
 
     implicit none
 
+    integer :: i
+
     ! CLI argument variables
     type(command_line_interface) :: cli
-    character(1024)              :: infile  ! allow <=1024byte filenames
-    character(1024)              :: outfile ! allow <=1024byte filenames
+    character(MAXFILENAMELEN)    :: infile
+    character(MAXFILENAMELEN)    :: outfile
     integer                      :: err
 
     ! Simulation state
@@ -33,43 +38,63 @@ program main
                  help='Input filename (absolute or relative to CWD)', &
                  required=.false., &
                  act='store',      &
-                 def='input/input'
+                 def='input/input',&
                  error=err)
-    stop_if_err(err, 'Internal argument parsing error.')
+    call stop_if_err(err, 'Internal argument parsing error.')
     call cli%add(switch='--output', &
                  switch_ab='-o',   &
                  help='Output filename base (absolute or relative to CWD)', &
                  required=.false., &
                  act='store',      &
-                 def='data/'
+                 def='data/',      &
                  error=err)
-    stop_if_err(err, 'Internal argument parsing error.')
+    call stop_if_err(err, 'Internal argument parsing error.')
     call cli%get(switch='-i', val=infile, error=err)
-    stop_if_err(err, 'Unable to parse input file name.')
-    call cli%get(switch='-i', val=outfile, error=err)
-    stop_if_err(err, 'Unable to parse output file base.')
+    call stop_if_err(err, 'Unable to parse input file name.')
+    call cli%get(switch='-o', val=outfile, error=err)
+    call stop_if_err(err, 'Unable to parse output file base.')
 
-    get_input_from_file(wlc_p=wlc_p, infile=infile)
-    initialize_wlcsim_data(wlc_d=wlc_d, wlc_p=wlc_p)
+    call setup_runtime_floats()
 
-    select case (wlc_p%simType)
+#if MPI_VERSION
+    call init_MPI(wlc_d)
+#endif
+
+    call get_input_from_file(infile, wlc_p, wlc_d)
+
+    call initialize_wlcsim_data(wlc_d, wlc_p)
+
+    call save_parameters(wlc_p, outfile)
+    i = 0
+    call save_simulation_state(i, wlc_d, wlc_p, outfile)
+
+    select case (wlc_p%codeName)
     case ('quinn', 'parallel temper continuous parameters')
-        do i=1,wlc_p%num_save_points
-            wlcsim_quinn(i, wlc_d, wlc_p)
-            save_simulation_state(wlc_d, wlc_p)
+        do i=1,wlc_p%numSavePoints
+            call wlcsim_quinn(i, wlc_d, wlc_p)
+            call save_simulation_state(i, wlc_d, wlc_p, outfile)
         enddo
     case ('brad', 'parallel temper discrete parameters', 'twist')
-        do i=1,wlc_p%num_save_points
-            wlcsim_brad(i, wlc_d, wlc_p)
-            save_simulation_state(wlc_d, wlc_p)
+        do i=1,wlc_p%numSavePoints
+           call wlcsim_brad(wlc_d,wlc_p)
+           call save_simulation_state(i, wlc_d, wlc_p, outfile)
+           print *, 'i is', i
+           print *, 'window', wlc_d%window(1:4)
+           print *, 'windowmax', wlc_p%MaxWindow(1:4)
+           print *, 'mcamp', wlc_d%mcamp(1:4)
+           print *, 'minamp', wlc_p%MinAmp(1:4)
+           print *, 'phit', wlc_d%pHit(1:4)
+           print *, 'wr', wlc_d%WR
+           print *, '*******************'
         enddo
     case ('bruno', 'brownian dynamics')
-        do i=1,wlc_p%num_save_points
-            wlcsim_brad(i, wlc_d, wlc_p)
-            save_simulation_state(wlc_d, wlc_p)
+        do i=1,wlc_p%numSavePoints
+            call wlcsim_bruno(i, wlc_d, wlc_p)
+            call save_simulation_state(i, wlc_d, wlc_p, outfile)
         enddo
     case default
-        stop_if_err(1, 'Invalid simulation code specified.')
+        call stop_if_err(1, 'Invalid simulation code name specified.')
     end select
+
 end program main
 

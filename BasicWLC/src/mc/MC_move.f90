@@ -7,10 +7,10 @@
 !---------------------------------------------------------------
 SUBROUTINE MC_move(R,U,RP,UP,NT,NB,NP,IP,IB1,IB2,IT1,IT2,MCTYPE &
                   ,MCAMP,WINDOW,AB,ABP,BPM,rand_stat,winType &
-                  ,IT3,IT4,forward)
+                  ,IT3,IT4,forward,dib,ring,INTERP_BEAD_LENNARD_JONES)
 
 use mersenne_twister
-use setPrecision
+use params, only: dp
 IMPLICIT NONE
 DOUBLE PRECISION, PARAMETER :: PI=3.141592653589793_dp ! Value of pi
 
@@ -30,6 +30,9 @@ INTEGER, intent(out) :: IB2   ! Test bead position 2
 INTEGER, intent(out) :: IT2   ! Index of test bead 2
 INTEGER, intent(out) :: IT3   ! Test bead position 3 if applicable
 INTEGER, intent(out) :: IT4   ! Test bead position 4 if applicable
+integer, intent(out) :: dib   ! number of beads moved by move
+logical, intent(in) :: ring
+logical, intent(in) :: INTERP_BEAD_LENNARD_JONES
 
 INTEGER I,J  ! Test indices
 ! Things for random number generator
@@ -70,7 +73,7 @@ double precision u_relative(3) ! u in new coordinate system
 logical, intent(out) :: forward
 
 !TODO saving RP is not actually needed, even in these cases, but Brad's code assumes that we have RP.
-if (RING .EQ. 1 .OR. INTERP_BEAD_LENNARD_JONES) then
+if (RING .OR. INTERP_BEAD_LENNARD_JONES) then
     RP = R
     UP = U
     P1 = 0.0_dp
@@ -79,6 +82,7 @@ endif
 !     Perform crank-shaft move (MCTYPE 1)
 
 if (MCTYPE.EQ.1) then
+   
    call random_number(urand,rand_stat)
    IP=ceiling(urand(1)*NP)
    IB1=ceiling(urand(2)*NB)
@@ -88,72 +92,82 @@ if (MCTYPE.EQ.1) then
    ! small enough sections of chain are moved.
    if (winType.eq.0) then
        IB2=IB1+nint((urand(3)-0.5_dp)*(2.0_dp*WINDOW(MCTYPE)+1.0))
-   elseif (winType.eq.1) then
+   elseif (winType.eq.1.and..not.RING) then
        call random_number(urnd,rand_stat)
        IB2=IB1+(2*nint(urand(3))-1)* &
                nint(-1.0*log(urnd(1))*WINDOW(MCTYPE))
+   elseif (winType.eq.1.and.RING) then
+       call random_number(urnd,rand_stat)
+       IB2=IB1+nint(-1.0*log(urnd(1))*WINDOW(MCTYPE))
    endif
 
-   if (RING.EQ.0) then
-        if (IB2.LT.1) then
-            IB2=1
-        endif
-        if (IB2.GT.NB) then
-            IB2=NB
-        endif
-
-        if (IB2.LT.IB1) then
-            TEMP=IB1
-            IB1=IB2
-            IB2=TEMP
-        endif
-    endif
    IT1=NB*(IP-1)+IB1
    IT2=NB*(IP-1)+IB2
 
-     DIB = IB2 - IB1
-     if (RING.EQ.1) then                    !Polymer is a ring
-        IF (IB2.GT.N) THEN
-           IB2=DIB-(N-IB1)
-        ENDIF
-        IT2=N*(IP-1)+IB2
+  
+   DIB = IB2-IB1
+   if (RING) then                    !Polymer is a ring
+      if (DIB.GT.NB) then
+         DIB = NB
+         IB2 = IB1 + NB
+      endif
+      IF (IB2.GT.NB) THEN
+         IB2=DIB-(NB-IB1)
+      ENDIF
+      IT2=NB*(IP-1)+IB2
+      if (IB1.EQ.IB2.AND.IB1.EQ.1) then
+         TA(1)=R(IT1+1,1)-R(NB*IP,1)
+         TA(2)=R(IT1+1,2)-R(NB*IP,2)
+         TA(3)=R(IT1+1,3)-R(NB*IP,3)
+      elseif (IB1.EQ.IB2.AND.IB1.EQ.NB) then
+         TA(1)=R(NB*(IP-1)+1,1)-R(IT1-1,1)
+         TA(2)=R(NB*(IP-1)+1,2)-R(IT1-1,2)
+         TA(3)=R(NB*(IP-1)+1,3)-R(IT1-1,3)
+      elseif (IB1.EQ.IB2.AND.IB1.NE.1.AND.IB2.NE.NB) then
+         TA(1)=R(IT1+1,1)-R(IT1-1,1)
+         TA(2)=R(IT1+1,2)-R(IT1-1,2)
+         TA(3)=R(IT1+1,3)-R(IT1-1,3)
+      else
+         TA(1)=R(IT2,1)-R(IT1,1)
+         TA(2)=R(IT2,2)-R(IT1,2)
+         TA(3)=R(IT2,3)-R(IT1,3)
+      endif
+   else                                 !Polymer is not a ring
+      if (IB2.GT.NB) then
+         IB2 = NB
+      elseif (IB2.LT.1) then
+         IB2 = 1
+      endif
+      IT2 = NB*(IP-1)+IB2
+      
+      if (IT1.GT.IT2) then
+         TEMP=IT1
+         IT1=IT2
+         IT2=TEMP
+         TEMP=IB1
+         IB1=IB2
+         IB2=TEMP
+      endif
+      DIB = IB2-IB1
 
-        if (IB1.EQ.IB2.AND.IB1.EQ.1) then
-           TA(1)=R(IT1+1,1)-R(N*IP,1)
-           TA(2)=R(IT1+1,2)-R(N*IP,2)
-           TA(3)=R(IT1+1,3)-R(N*IP,3)
-        elseif (IB1.EQ.IB2.AND.IB1.EQ.N) then
-           TA(1)=R(N*(IP-1)+1,1)-R(IT1-1,1)
-           TA(2)=R(N*(IP-1)+1,2)-R(IT1-1,2)
-           TA(3)=R(N*(IP-1)+1,3)-R(IT1-1,3)
-        elseif (IB1.EQ.IB2.AND.IB1.NE.1.AND.IB2.NE.N) then
-           TA(1)=R(IT1+1,1)-R(IT1-1,1)
-           TA(2)=R(IT1+1,2)-R(IT1-1,2)
-           TA(3)=R(IT1+1,3)-R(IT1-1,3)
-        else
-           TA(1)=R(IT2,1)-R(IT1,1)
-           TA(2)=R(IT2,2)-R(IT1,2)
-           TA(3)=R(IT2,3)-R(IT1,3)
-        endif
-     else                                 !Polymer is not a ring
-        if (IB1.EQ.IB2.AND.IB1.EQ.1) then
-           TA(1)=R(IT1+1,1)-R(IT1,1)
-           TA(2)=R(IT1+1,2)-R(IT1,2)
-           TA(3)=R(IT1+1,3)-R(IT1,3)
-        elseif (IB1.EQ.IB2.AND.IB1.EQ.N) then
-           TA(1)=R(N*IP,1)-R(N*IP-1,1)
-           TA(2)=R(N*IP,2)-R(N*IP-1,2)
-           TA(3)=R(N*IP,3)-R(N*IP-1,3)
-        elseif (IB1.EQ.IB2.AND.IB1.NE.1.AND.IB2.NE.N) then
-           TA(1)=R(IT1+1,1)-R(IT1-1,1)
-           TA(2)=R(IT1+1,2)-R(IT1-1,2)
-           TA(3)=R(IT1+1,3)-R(IT1-1,3)
-        else
-           TA(1)=R(IT2,1)-R(IT1,1)
-           TA(2)=R(IT2,2)-R(IT1,2)
-           TA(3)=R(IT2,3)-R(IT1,3)
-        endif
-     endif
+      if (IB1.EQ.IB2.AND.IB1.EQ.1) then
+         TA(1)=R(IT1+1,1)-R(IT1,1)
+         TA(2)=R(IT1+1,2)-R(IT1,2)
+         TA(3)=R(IT1+1,3)-R(IT1,3)
+      elseif (IB1.EQ.IB2.AND.IB1.EQ.NB) then
+         TA(1)=R(NB*IP,1)-R(NB*IP-1,1)
+         TA(2)=R(NB*IP,2)-R(NB*IP-1,2)
+         TA(3)=R(NB*IP,3)-R(NB*IP-1,3)
+      elseif (IB1.EQ.IB2.AND.IB1.NE.1.AND.IB2.NE.NB) then
+         TA(1)=R(IT1+1,1)-R(IT1-1,1)
+         TA(2)=R(IT1+1,2)-R(IT1-1,2)
+         TA(3)=R(IT1+1,3)-R(IT1-1,3)
+      else
+         TA(1)=R(IT2,1)-R(IT1,1)
+         TA(2)=R(IT2,2)-R(IT1,2)
+         TA(3)=R(IT2,3)-R(IT1,3)
+      endif
+   endif
 
 
      MAG=sqrt(TA(1)**2.+TA(2)**2.+TA(3)**2.)
@@ -163,7 +177,7 @@ if (MCTYPE.EQ.1) then
      P1(1)=R(IT1,1)
      P1(2)=R(IT1,2)
      P1(3)=R(IT1,3)
-     call random_number(urand,stat)
+     call random_number(urand,rand_stat)
      ALPHA=MCAMP(1)*(urand(1)-0.5)
 
      ROT(1,1)=TA(1)**2.+(TA(2)**2.+TA(3)**2.)*cos(ALPHA)
@@ -187,8 +201,8 @@ if (MCTYPE.EQ.1) then
      I=IT1
 
      DO  J=0,DIB
-        if (I.EQ.(N*IP+1).AND.RING.EQ.1) then
-           I=N*(IP-1)+1
+        if (I.EQ.(NB*IP+1).AND.RING) then
+           I=NB*(IP-1)+1
         endif
         RP(I,1)=ROT(1,4)+ROT(1,1)*R(I,1)+ROT(1,2)*R(I,2)+ROT(1,3)*R(I,3)
         RP(I,2)=ROT(2,4)+ROT(2,1)*R(I,1)+ROT(2,2)*R(I,2)+ROT(2,3)*R(I,3)
@@ -196,10 +210,11 @@ if (MCTYPE.EQ.1) then
         UP(I,1)=ROT(1,1)*U(I,1)+ROT(1,2)*U(I,2)+ROT(1,3)*U(I,3)
         UP(I,2)=ROT(2,1)*U(I,1)+ROT(2,2)*U(I,2)+ROT(2,3)*U(I,3)
         UP(I,3)=ROT(3,1)*U(I,1)+ROT(3,2)*U(I,2)+ROT(3,3)*U(I,3)
-
         I=I+1
 
+       
      ENDDO
+
   !  ------begining testing---------
   if(.false.) then
       ! This is a code block for testing
@@ -252,30 +267,42 @@ elseif (MCTYPE.EQ.2) then
    ! again, we use a window
    if (winType.eq.0) then
        IB2=IB1+nint((urand(3)-0.5_dp)*(2.0_dp*WINDOW(MCTYPE)+1.0))
-   elseif (winType.eq.1) then
+   elseif (winType.eq.1.and..not.RING) then
        call random_number(urnd,rand_stat)
        IB2=IB1+(2*nint(urand(3))-1)* &
                nint(-1.0*log(urnd(1))*WINDOW(MCTYPE))
+   elseif (winType.eq.1.and.RING) then
+       call random_number(urnd,rand_stat)
+       IB2=IB1+nint(-1.0*log(urnd(1))*WINDOW(MCTYPE))
+
    endif
 
-   if (RING .EQ. 0) then
-    if (IB2.LT.1) then
-        IB2=1
-    endif
-    if (IB2.GT.NB) then
-        IB2=NB
-    endif
-    if (IB2.LT.IB1) then
-        TEMP=IB1
-        IB1=IB2
-        IB2=TEMP
-    endif
+   DIB=IB2-IB1
+
+   if (RING) then
+      if (DIB.GT.NB) then
+         DIB = NB
+         IB2 = IB1 + NB
+      endif
+      
+      if (IB2.GT.NB) then
+         IB2=DIB-(NB-IB1) 
+      endif
+   
    else
-    DIB=IB2-IB1
-    if (IB2 .GT. N) then
-        IB2=DIB-(N-IB1)
-    endif
-    IT2=N*(IP-1)+IB2
+      if (IB2.GT.NB) then
+         IB2=NB
+      endif
+      if (IB2.LT.1) then
+         IB2=1
+      endif
+      if (IB2.LT.IB1) then
+         TEMP=IB1
+         IB1=IB2
+         IB2=TEMP
+      endif
+      IT2=NB*(IP-1)+IB2
+      DIB = IB2-IB1
    endif
 
    IT1=NB*(IP-1)+IB1
@@ -289,8 +316,8 @@ elseif (MCTYPE.EQ.2) then
      I=IT1
      DO  J=0,DIB
 
-        if (I.EQ.(N*IP+1).AND.RING.EQ.1) then
-           I=N*(IP-1)+1
+        if (I.EQ.(NB*IP+1).AND.RING) then
+           I=NB*(IP-1)+1
         endif
 
         RP(I,1)=R(I,1)+DR(1)
@@ -721,7 +748,7 @@ endif
 RETURN
 END
 subroutine test_equiv_forward(U,R,UP,RP,NT,IT1,IT2,RparaMag,RperpMag)
-use setPrecision
+use params, only: dp
 IMPLICIT NONE
 ! inputs
 INTEGER NT,IT1,IT2
@@ -810,7 +837,7 @@ subroutine random_perp(u,p,t,rand_stat)
 ! The output vectors, p and t, are perpendicular to eachother and u
 ! The triad is randomly left or right handed
 use mersenne_twister
-use setPrecision
+use params, only: dp
 IMPLICIT NONE
 DOUBLE PRECISION, PARAMETER :: PI=3.141592654 ! Value of pi
 type(random_stat) rand_stat  ! status of random number generator

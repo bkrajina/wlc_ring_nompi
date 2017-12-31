@@ -9,22 +9,20 @@
 !
 !     Updated by Quinn in 2016
 !
-SUBROUTINE initcond(R,U,AB,NT,N,NP,FRMFILE,PARA,LBOX, &
-                    setType,rand_stat)
+SUBROUTINE initcond(R,U,AB,NT,NB,NP,FRMFILE,PARA,LBOX, &
+                    setType,rand_stat,ring)
 
 !use mt19937, only : grnd, init_genrand, rnorm, mt, mti
 use mersenne_twister
-use setPrecision
+use params, only: dp, pi
 
 IMPLICIT NONE
 
-DOUBLE PRECISION PI
-PARAMETER (PI=3.141593_dp)
-
+logical ring
+INTEGER NB,NP,NT           ! Number of beads
 DOUBLE PRECISION R(NT,3)  ! Bead positions
 DOUBLE PRECISION U(NT,3)  ! Tangent vectors
 INTEGER AB(NT)            ! Chemical identity of beads
-INTEGER N,NP,NT           ! Number of beads
 DOUBLE PRECISION GAM      ! Equil bead separation
 DOUBLE PRECISION LBOX(3)  ! Box edge length
 INTEGER I,J,IB            ! Index Holders
@@ -52,6 +50,8 @@ type(random_stat) rand_stat
 real urand(3)
 DOUBLE PRECISION mag  ! magnitude of U for reload
 
+GAM=PARA(4)
+
 !     Setup the choice parameters
 
 if(FRMFILE)then
@@ -74,11 +74,9 @@ if(FRMFILE)then
    return
 endif
 
-
 !     Fix the initial condition
 if(setType.eq.1) then
 ! staight line in y direction with random starting position
-    GAM=PARA(4)
 
     IB=1
     DO I=1,NP
@@ -86,21 +84,23 @@ if(setType.eq.1) then
        R0(1)=urand(1)*LBOX(1)
        R0(2)=urand(2)*LBOX(2)
        R0(3)=urand(3)*LBOX(3)
-       DO J=1,N
+
+       DO J=1,NB
           R(IB,1)=R0(1)
-          R(IB,2)=R0(2)+GAM*(J-N/2.0_dp-0.5_dp) ! center on box
+          R(IB,2)=R0(2)+GAM*(J-NB/2.0_dp-0.5_dp) ! center on box
           R(IB,3)=R0(3)
-          U(IB,1)=0.
-          U(IB,2)=1.
+          U(IB,1)=0.0_dp
+          U(IB,2)=1.0_dp
           U(IB,3)=0.
           IB=IB+1
+
        enddo
     enddo
+
 else if(setType.eq.2) then
     ! travel in radom direction
     ! rerandomize when reaching boundary
     ! slit boundary in z direction
-    GAM=PARA(4)
 
     IB=1
     DO  I=1,NP
@@ -115,7 +115,7 @@ else if(setType.eq.2) then
         Uold(2)=sqrt(1-z*z)*sin(theta)
         Uold(3)=z
 
-        DO J=1,N
+        DO J=1,NB
            search=.TRUE.
            ii=0
            do while(search)
@@ -162,7 +162,6 @@ else if(setType.eq.3) then
     ! travel in radom direction
     ! rerandomize when reaching boundary
     ! square boundary
-    GAM=PARA(4)
 
     IB=1
     DO  I=1,NP
@@ -177,7 +176,7 @@ else if(setType.eq.3) then
        Uold(2)=sqrt(1-z*z)*sin(theta)
        Uold(3)=z
 
-       DO J=1,N
+       DO J=1,NB
           search=.TRUE.
           ii=0
           do while(search)
@@ -239,7 +238,6 @@ else if(setType.eq.4) then
     ! shpere boundary
     ! radius of LBox/2 centered at LBox/2
     Rc=LBOX(1)/2.0_dp ! use LBOX as radius
-       GAM=PARA(4)
     IB=1
     DO  I=1,NP
        call random_number(urand,rand_stat)
@@ -255,7 +253,7 @@ else if(setType.eq.4) then
        Uold(1)=sqrt(1-z*z)*cos(theta)
        Uold(2)=sqrt(1-z*z)*sin(theta)
        Uold(3)=z
-       DO J=1,N
+       DO J=1,NB
            search=.TRUE.
            do while(search)
                test(1)=Rold(1)+Uold(1)*GAM
@@ -320,24 +318,44 @@ else if (setType == 6) then
         call random_number(urand,rand_stat)
         R0(3)=urand(1)*LBOX(1)
         DO  J=1,NB
-            IF (RING.EQ.0) THEN
-                R(IB,1)=R0(1)
-                R(IB,2)=R0(2)+GAM*(J-NB/2.0_dp-0.5_dp)
-                R(IB,3)=R0(3)
-                U(IB,1)=0.0_dp
-                U(IB,2)=1.0_dp
-                U(IB,3)=0.0_dp
-            ELSE
+            IF (RING) THEN
                 R(IB,1)=R0(1)+((GAM*NB)/(2*PI))*Cos(J*2.0_dp*PI/NB)
                 R(IB,2)=R0(2)+((GAM*NB)/(2*PI))*Sin(J*2.0_dp*PI/NB)
                 R(IB,3)=0.0_dp
                 U(IB,1)=-Sin(J*2.0_dp*PI/NB)
                 U(IB,2)=Cos(J*2.0_dp*PI/NB)
                 U(IB,3)=0.0_dp;
+            ELSE
+                R(IB,1)=R0(1)
+                R(IB,2)=R0(2)+GAM*(J-NB/2.0_dp-0.5_dp)
+                R(IB,3)=R0(3)
+                U(IB,1)=0.0_dp
+                U(IB,2)=1.0_dp
+                U(IB,3)=0.0_dp
             ENDIF
         IB=IB+1
         ENDDO
     ENDDO
+else if (setType == 7) then
+   !initialize polymer as a ring with random starting position in the box
+   !and bond lengths corresponding to the equilibrium bond length
+    IB=1
+    DO I=1,NP
+       call random_number(urand,rand_stat)
+       R0(1)=urand(1)*LBOX(1)
+       R0(2)=urand(2)*LBOX(2)
+       R0(3)=urand(3)*LBOX(3)
+
+       DO J=1,NB
+          R(IB,1)=R0(1)+((GAM*NB)/(2.0_dp*PI))*Cos(J*2.0_dp*PI/NB)
+          R(IB,2)=R0(2)+((GAM*NB)/(2.0_dp*PI))*Sin(J*2.0_dp*PI/NB)
+          R(IB,3)=R0(3)
+          U(IB,1)=-Sin(J*2.0_dp*PI/NB)
+          U(IB,2)=Cos(J*2.0_dp*PI/NB)
+          U(IB,3)=0.0_dp;
+          IB=IB+1
+       enddo
+    enddo
 
 endif
 

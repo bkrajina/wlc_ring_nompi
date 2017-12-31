@@ -3,16 +3,16 @@
 !
 !     This subroutine calculates the change in self-interaction of a DNA-like
 !     molecule as a chain that interacts through a repulsive lennard-jones potential
-!     
+!
 !     The change in self-interaction energy associated with a crankshaft move
 !     is calculated.
 !
-!     The program takes the terminal bead indices of the segment that is 
+!     The program takes the terminal bead indices of the segment that is
 !     rotated by the crankshaft move.
 !
 !
 !     The interaction energy is determined used the distance of closest
-!     approach between line segments. Energy of segments adjacent along the 
+!     approach between line segments. Energy of segments adjacent along the
 !     chain is not calculated.
 
 
@@ -26,36 +26,27 @@ SUBROUTINE DE_SELF_CRANK(DE,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
   DOUBLE PRECISION E        ! Self-energy before move
   DOUBLE PRECISION EP       ! Self-energy of test polymer
   DOUBLE PRECISION FMAG     ! Mag of force
-  DOUBLE PRECISION RIJ      ! Interbead dist
-  DOUBLE PRECISION EIJ(3)   ! Interbead unit vector
   INTEGER I, J              ! Index holders
-  INTEGER SKIP              ! Bead skip index
 
   !     Variables for the calculation
 
   DOUBLE PRECISION U1(3),U2(3),U1U2
   DOUBLE PRECISION D1,D2
-  DOUBLE PRECISION R12(3),D12,E12(3),R12T(3),R12C1(3),R12C2(3)
+  DOUBLE PRECISION R12(3),D12,R12T(3),R12C1(3),R12C2(3)
   DOUBLE PRECISION S1,S2
   DOUBLE PRECISION GI(3)
-  INTEGER I1,J1,I2,J2
   INTEGER IB1,IB2
   INTEGER IO,II,IOP1,IIP1
   INTEGER DIO,DII
 
   !     Parameters in the simulation
 
-  DOUBLE PRECISION PARA(10)      
+  DOUBLE PRECISION PARA(10)
   DOUBLE PRECISION LHC      ! HC length
-  DOUBLE PRECISION VHC 	! Potential strengths
+  DOUBLE PRECISION VHC ! Potential strengths
   DOUBLE PRECISION GAM
   DOUBLE PRECISION LBOX     ! Box edge length
-  DOUBLE PRECISION SUM
-  DOUBLE PRECISION DT
-  INTEGER RING              ! Is polymer a ring?
-  INTEGER NMAX     
-
-  DOUBLE PRECISION D12MIN,FMAGMIN
+  LOGICAL RING              ! Is polymer a ring?
 
 
   GAM=PARA(4)
@@ -66,7 +57,7 @@ SUBROUTINE DE_SELF_CRANK(DE,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
 
   ! Determine number of segments inside segment moved and outside
 
-  IF (RING.EQ.1) THEN
+  IF (RING) THEN
      IF (IB2.GE.IB1) THEN
         DII=IB2-IB1
      ELSE
@@ -90,9 +81,9 @@ SUBROUTINE DE_SELF_CRANK(DE,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
   E=0.
   II=IB1
   DO I=1,DII
-     IF (II.EQ.N.AND.RING.EQ.1) THEN
+     IF (II.EQ.N.AND.RING) THEN
         IIP1=1
-     ELSEIF (II.EQ.N+1.AND.RING.EQ.1) THEN
+     ELSEIF (II.EQ.N+1.AND.RING) THEN
         II=1
         IIP1=II+1
      ELSE
@@ -100,12 +91,12 @@ SUBROUTINE DE_SELF_CRANK(DE,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
      ENDIF
      IO=IB2
      DO J=1,DIO
-        IF (IO.EQ.N.AND.RING.EQ.1) THEN
+        IF (IO.EQ.N.AND.RING) THEN
            IOP1=1
-        ELSEIF (IO.EQ.N+1.AND.RING.EQ.1) THEN
+        ELSEIF (IO.EQ.N+1.AND.RING) THEN
            IO=1
            IOP1=IO+1
-        ELSEIF (IO.EQ.N.AND.RING.EQ.0) THEN
+        ELSEIF (IO.EQ.N.AND..NOT.RING) THEN
            IO=0
            GOTO 70
         ELSE
@@ -209,9 +200,9 @@ SUBROUTINE DE_SELF_CRANK(DE,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
   EP=0.
   II=IB1
   DO I=1,DII
-     IF (II.EQ.N.AND.RING.EQ.1) THEN
+     IF (II.EQ.N.AND.RING) THEN
         IIP1=1
-     ELSEIF (II.EQ.N+1.AND.RING.EQ.1) THEN
+     ELSEIF (II.EQ.N+1.AND.RING) THEN
         II=1
         IIP1=II+1
      ELSE
@@ -219,12 +210,12 @@ SUBROUTINE DE_SELF_CRANK(DE,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
      ENDIF
      IO=IB2
      DO J=1,DIO
-        IF (IO.EQ.N.AND.RING.EQ.1) THEN
+        IF (IO.EQ.N.AND.RING) THEN
            IOP1=1
-        ELSEIF (IO.EQ.N+1.AND.RING.EQ.1) THEN
+        ELSEIF (IO.EQ.N+1.AND.RING) THEN
            IO=1
            IOP1=IO+1
-        ELSEIF (IO.EQ.N.AND.RING.EQ.0) THEN
+        ELSEIF (IO.EQ.N.AND..NOT.RING) THEN
            IO=0
            GOTO 90
         ELSE
@@ -321,12 +312,12 @@ SUBROUTINE DE_SELF_CRANK(DE,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
 
 
   !Get the energy difference
- 
+
   DE=EP-E
 
 
   RETURN
 ENDSUBROUTINE DE_SELF_CRANK
-      
+
 !---------------------------------------------------------------*
-      
+

@@ -1,5 +1,4 @@
 !---------------------------------------------------------------*
-
 !
 !     This subroutine calculates the self-interaction of a DNA-like
 !     molecule.
@@ -10,7 +9,7 @@
 !     during a segment slide move of the Monte Carlo simulation.
 !
 !     The interaction energy is determined used the distance of closest
-!     approach between line segments. Energy of segments adjacent along the 
+!     approach between line segments. Energy of segments adjacent along the
 !     chain is not calculated.
 
 !     This routine currently only works when there is only one polymer
@@ -20,49 +19,40 @@
 
 
 SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
-  
+
   IMPLICIT NONE
   INTEGER N,NT,NP            ! Current number of beads
   DOUBLE PRECISION R(NT,3)   ! Bead positions
   DOUBLE PRECISION EPONP ! Self-interaction force
   DOUBLE PRECISION FMAG     ! Mag of force
-  DOUBLE PRECISION RIJ      ! Interbead dist
-  DOUBLE PRECISION EIJ(3)   ! Interbead unit vector
   INTEGER I, J              ! Index holders
-  INTEGER SKIP              ! Bead skip index
 
   !     Variables for the calculation
 
   DOUBLE PRECISION U1(3),U2(3),U1U2
   DOUBLE PRECISION D1,D2
-  DOUBLE PRECISION R12(3),D12,E12(3),R12T(3),R12C1(3),R12C2(3)
+  DOUBLE PRECISION R12(3),D12,R12T(3),R12C1(3),R12C2(3)
   DOUBLE PRECISION S1,S2
   DOUBLE PRECISION GI(3)
-  INTEGER I1,J1,I2,J2
-  INTEGER IB1,IB2,IB1P1,IB2P1
+  INTEGER IB1,IB2
   INTEGER IO,II,IS1,IS2,IOP1,IIP1,IS1P1,IS2P1
-  INTEGER DIO,DII,DIB
+  INTEGER DIO,DIB
 
   !     Parameters in the simulation
 
-  DOUBLE PRECISION PARA(10)      
+  DOUBLE PRECISION PARA(10)
   DOUBLE PRECISION LHC      ! HC length
-  DOUBLE PRECISION SIGP     ! HC diameter
-  DOUBLE PRECISION VHC 	! Potential strengths
+  DOUBLE PRECISION VHC ! Potential strengths
   DOUBLE PRECISION GAM
   DOUBLE PRECISION LBOX     ! Box edge length
-  DOUBLE PRECISION SUM
-  DOUBLE PRECISION DT
   DOUBLE PRECISION XIR
   DOUBLE PRECISION XIU
   DOUBLE PRECISION ETA
   DOUBLE PRECISION EPAR
   DOUBLE PRECISION EPERP
   DOUBLE PRECISION EB
-  INTEGER RING              ! Is polymer a ring?
-  INTEGER NMAX     
+  LOGICAL RING              ! Is polymer a ring?
 
-  DOUBLE PRECISION D12MIN,FMAGMIN
 
   EB=PARA(1)
   EPAR=PARA(2)
@@ -80,7 +70,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !Setup. Determine the number of segments that lie 
+  !Setup. Determine the number of segments that lie
   !betwen the two terminal points of the segment slid.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -108,7 +98,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
 
   IF (IS1P1.EQ.1) THEN
      IS1=N
-  ELSE 
+  ELSE
      IS1=IS1P1-1
   ENDIF
 
@@ -133,7 +123,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
      !Sum over segments inside segment slid (inner segments)
      DO  I=1,DIB
 
-        IF (II.EQ.N.AND.RING.EQ.1) THEN
+        IF (II.EQ.N.AND.RING) THEN
            IIP1=1
         ELSEIF (II.EQ.N+1) THEN
            II=1
@@ -145,11 +135,11 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
         !Sum over segments unchanged by slide (outer segments)
         DO J=1,DIO
 
-           IF (IO.EQ.N.AND.RING.EQ.1) THEN
+           IF (IO.EQ.N.AND.RING) THEN
               IOP1=1
-           ELSEIF (IO.EQ.N.AND.RING.EQ.0)THEN
+           ELSEIF (IO.EQ.N.AND..NOT.RING)THEN
               IO=0
-              GOTO 110 
+              GOTO 110
            ELSEIF (IO.EQ.N+1) THEN
               IO=1
               IOP1=IO+1
@@ -163,7 +153,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
            ENDIF
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
            !Calculate the interaction energy between the inner segment
            !and outer segment.
@@ -250,7 +240,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
 70         CONTINUE
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-           !Calculate the interaction between this outer segment and the 
+           !Calculate the interaction between this outer segment and the
            !two stretched segments. Only do this once.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -262,7 +252,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
               ENDIF
 
               !If the chain is linear and IS1P1.EQ.1 then there is no first 'stretched' segment
-              IF (IS1P1.EQ.1.AND.RING.EQ.0) THEN
+              IF (IS1P1.EQ.1.AND..NOT.RING) THEN
                  GOTO 90
               ENDIF
 
@@ -364,7 +354,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
               ENDIF
 
               !If the chain is linear and IS2=N, then there is no second 'stretched' segment
-              IF (IS2.EQ.N.AND.RING.EQ.0) THEN
+              IF (IS2.EQ.N.AND..NOT.RING) THEN
                  GOTO 110
               ENDIF
 
@@ -458,7 +448,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !Calculate the interaction between the inner segment and the first stretched
-        !segment. 
+        !segment.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         !Skip this pair if the segments are adjacent
@@ -467,7 +457,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
         ENDIF
 
         !If the chain is linear and  IS1P1=1 there is no first "stretched" segment
-        IF (IS1P1.EQ.1.AND.RING.EQ.0) THEN
+        IF (IS1P1.EQ.1.AND..NOT.RING) THEN
            GOTO 130
         ENDIF
 
@@ -553,7 +543,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
 
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !Calculate interaction between inner segment and second stretched segment
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -562,7 +552,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
         ENDIF
 
         !If the chain is linear and IS2=N, there is no second "stretched" segment
-        IF (IS2.EQ.N.AND.RING.EQ.0) THEN
+        IF (IS2.EQ.N.AND..NOT.RING) THEN
            GOTO 150
         ENDIF
 
@@ -655,7 +645,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !Calculate the interaction between the two stretched segments 
+  !Calculate the interaction between the two stretched segments
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -767,9 +757,9 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
      !Sum over segments unchanged by slide (outer segments)
      DO J=1,DIO
 
-        IF (IO.EQ.N.AND.RING.EQ.1) THEN
+        IF (IO.EQ.N.AND.RING) THEN
            IOP1=1
-        ELSEIF (IO.EQ.N.AND.RING.EQ.0) THEN
+        ELSEIF (IO.EQ.N.AND..NOT.RING) THEN
            IO=0
            GOTO 210
         ELSEIF (IO.EQ.N+1) THEN
@@ -788,7 +778,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
         ENDIF
 
         !If the chain is linear and IP1P1=1, there is no first "stretched" segment
-        IF (IS1P1.EQ.1.AND.RING.EQ.0) THEN
+        IF (IS1P1.EQ.1.AND..NOT.RING) THEN
            GOTO 190
         ENDIF
 
@@ -891,7 +881,7 @@ SUBROUTINE ENERGY_SELF_SLIDE(EPONP,R,NT,N,NP,PARA,RING,IB1,IB2)
 
         !If the chain is linear and IS2=N, then there is no second "stretched" segment
 
-        IF (IS2.EQ.N.AND.RING.EQ.0) THEN
+        IF (IS2.EQ.N.AND..NOT.RING) THEN
            GOTO 210
         ENDIF
 

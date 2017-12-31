@@ -4,23 +4,29 @@
 !
 !     Calculate the change in the polymer elastic energy
 !     due to the displacement from a MC move
+!
 SUBROUTINE MC_eelas(DEELAS,R,U,RP,UP,&
                     NT,NB,IB1,IB2,&
                     IT1,IT2,EB,EPAR,EPERP,GAM,ETA, &
-                    RING,TWIST,Lk,lt,LP,L,MCTYPE,WR,WRP)
+                    RING,TWIST,Lk,lt,L,MCTYPE,WR,WRP, &
+                    SIMTYPE)
 
-use setPrecision
+use params, only: dp, pi
 IMPLICIT NONE
+INTEGER, intent(in) :: NT, SIMTYPE
 DOUBLE PRECISION, intent(in) :: R(NT,3)  ! Bead positions
 DOUBLE PRECISION, intent(in) :: U(NT,3)  ! Tangent vectors
 DOUBLE PRECISION, intent(in) :: RP(NT,3)  ! Bead positions
 DOUBLE PRECISION, intent(in) :: UP(NT,3)  ! Tangent vectors
 INTEGER, intent(in) :: NB                ! Number of beads in a polymer
-INTEGER, intent(in) :: NT                ! Total number of beads
 INTEGER, intent(in) :: IB1               ! Test bead position 1
 INTEGER, intent(in) :: IT1               ! Index of test bead 1
 INTEGER, intent(in) :: IB2               ! Test bead position 2
 INTEGER, intent(in) :: IT2               ! Index of test bead 2
+
+DOUBLE PRECISION :: U0(NT,3)  ! dummy variable for calculating u in wlc case
+DOUBLE PRECISION :: UP0(NT,3)  ! dummy variable for calculating u in wlc case
+DOUBLE PRECISION :: UNORM,U1U2
 
 DOUBLE PRECISION, intent(out) :: DEELAS(4)   ! Change in ECOM
 
@@ -34,16 +40,17 @@ double precision, intent(in) :: ETA
 INTEGER  Lk               ! Linking number
 DOUBLE PRECISION L        ! Contour length
 DOUBLE PRECISION lt       ! Twist persistence length
-DOUBLE PRECISION LP       ! Bend persistence length
 DOUBLE PRECISION Tw       ! Twist
 DOUBLE PRECISION TWP      ! Twist of test structure
 DOUBLE PRECISION WR       ! Writhe
-DOUBLE PRECISION WRP      ! Writhe of test structure
+DOUBLE PRECISION, intent(out) :: WRP      ! Writhe of test structure
 DOUBLE PRECISION DWR      ! Change in Writhe
 DOUBLE PRECISION WRM,WRMP ! Component of writhe affected by move
-INTEGER RING              ! Is polymer a ring?
-INTEGER TWIST             ! Include twist?
+logical RING              ! Is polymer a ring?
+logical TWIST             ! Include twist?
 INTEGER IT1M1
+INTEGER IT1P1
+INTEGER IT2M1
 INTEGER IT2P1
 INTEGER MCTYPE            ! MC move type
 
@@ -59,7 +66,7 @@ DOUBLE PRECISION GI(3)
 
 !     Calculate the change in the energy
 
-      if ((IB1.NE.1).or.(RING.EQ.1)) then
+      if ((IB1.NE.1).or.RING) then
           ! so if RING.EQ.1, i.e.
           if (IB1.EQ.1) then
               ! then the bead to the left of IB1 is actually the end bead due to the ring inducing periodic boundaries on the array
@@ -70,41 +77,41 @@ DOUBLE PRECISION GI(3)
 
          ! MC move only affects energy if it's interior to the polymer, since there are only crankshaft moves, and end
          ! crankshafts don't affect polymer
-         if (SIMTYPE.EQ.1.AND.(IB1.NE.NB.OR.RING.EQ.1)) then
+         if (SIMTYPE.EQ.1.AND.(IB1.NE.NB.OR.RING)) then
              if (IB1.EQ.NB) then
                  IT1P1 = 1
              else
                  IT1P1 = IT1 + 1
              endif
 
-            U(IT1M1,1)=R(IT1,1)-R(IT1M1,1)
-            U(IT1M1,2)=R(IT1,2)-R(IT1M1,2)
-            U(IT1M1,3)=R(IT1,3)-R(IT1M1,3)
-            UNORM=sqrt(U(IT1M1,1)**2.+U(IT1M1,2)**2.+U(IT1M1,3)**2.)
-            U(IT1M1,1)=U(IT1M1,1)/UNORM
-            U(IT1M1,2)=U(IT1M1,2)/UNORM
-            U(IT1M1,3)=U(IT1M1,3)/UNORM
+            U0(IT1M1,1)=R(IT1,1)-R(IT1M1,1)
+            U0(IT1M1,2)=R(IT1,2)-R(IT1M1,2)
+            U0(IT1M1,3)=R(IT1,3)-R(IT1M1,3)
+            UNORM=sqrt(U0(IT1M1,1)**2.+U0(IT1M1,2)**2.+U0(IT1M1,3)**2.)
+            U0(IT1M1,1)=U0(IT1M1,1)/UNORM
+            U0(IT1M1,2)=U0(IT1M1,2)/UNORM
+            U0(IT1M1,3)=U0(IT1M1,3)/UNORM
 
-            U(IT1,1)=R(IT1+1,1)-R(IT1,1)
-            U(IT1,2)=R(IT1+1,2)-R(IT1,2)
-            U(IT1,3)=R(IT1+1,3)-R(IT1,3)
-            UNORM=sqrt(U(IT1,1)**2.+U(IT1,2)**2.+U(IT1,3)**2.)
-            U(IT1,1)=U(IT1,1)/UNORM
-            U(IT1,2)=U(IT1,2)/UNORM
-            U(IT1,3)=U(IT1,3)/UNORM
+            U0(IT1,1)=R(IT1+1,1)-R(IT1,1)
+            U0(IT1,2)=R(IT1+1,2)-R(IT1,2)
+            U0(IT1,3)=R(IT1+1,3)-R(IT1,3)
+            UNORM=sqrt(U0(IT1,1)**2.+U0(IT1,2)**2.+U0(IT1,3)**2.)
+            U0(IT1,1)=U0(IT1,1)/UNORM
+            U0(IT1,2)=U0(IT1,2)/UNORM
+            U0(IT1,3)=U0(IT1,3)/UNORM
 
-            UP(IT1,1)=RP(IT1+1,1)-RP(IT1,1)
-            UP(IT1,2)=RP(IT1+1,2)-RP(IT1,2)
-            UP(IT1,3)=RP(IT1+1,3)-RP(IT1,3)
-            UNORM=sqrt(UP(IT1,1)**2.+UP(IT1,2)**2.+UP(IT1,3)**2.)
-            UP(IT1,1)=UP(IT1,1)/UNORM
-            UP(IT1,2)=UP(IT1,2)/UNORM
-            UP(IT1,3)=UP(IT1,3)/UNORM
+            UP0(IT1,1)=RP(IT1+1,1)-RP(IT1,1)
+            UP0(IT1,2)=RP(IT1+1,2)-RP(IT1,2)
+            UP0(IT1,3)=RP(IT1+1,3)-RP(IT1,3)
+            UNORM=sqrt(UP0(IT1,1)**2.+UP0(IT1,2)**2.+UP0(IT1,3)**2.)
+            UP0(IT1,1)=UP0(IT1,1)/UNORM
+            UP0(IT1,2)=UP0(IT1,2)/UNORM
+            UP0(IT1,3)=UP0(IT1,3)/UNORM
 
-            U1U2=U(IT1M1,1)*U(IT1,1)+U(IT1M1,2)*U(IT1,2)+U(IT1M1,3)*U(IT1,3)
+            U1U2=U0(IT1M1,1)*U0(IT1,1)+U0(IT1M1,2)*U0(IT1,2)+U0(IT1M1,3)*U0(IT1,3)
             ! only bending energy in WLC, others are init to zero, so sum in total energy calculation later will be no-op
             DEELAS(1)=DEELAS(1)+EB*U1U2
-            U1U2=U(IT1M1,1)*UP(IT1,1)+U(IT1M1,2)*UP(IT1,2)+U(IT1M1,3)*UP(IT1,3)
+            U1U2=U(IT1M1,1)*UP0(IT1,1)+U(IT1M1,2)*UP(IT1,2)+U(IT1M1,3)*UP(IT1,3)
             DEELAS(1)=DEELAS(1)-EB*U1U2
 
          elseif (SIMTYPE.EQ.2) then
@@ -162,7 +169,7 @@ DOUBLE PRECISION GI(3)
          endif
       endif
 
-      if ((IB2.NE.NB).or.(RING.EQ.1)) then
+      if ((IB2.NE.NB).or.RING) then
          if (IB2.EQ.NB) then
              IT2P1 = 1
          else
@@ -172,47 +179,47 @@ DOUBLE PRECISION GI(3)
          ! if we're talking about a WLC, if we crankshaft a single bead, that's a no-op, since the u's are directly
          ! determined by the r's. Thus we're not worried about double counting the energy change here since the energy change
          ! should be zero by definition if IB1==IB2.
-         if (SIMTYPE.EQ.1.AND.((IB2.NE.1).OR.(RING.EQ.1))) then
+         if (SIMTYPE.EQ.1.AND.((IB2.NE.1).OR.RING)) then
             if (IB2.EQ.1) then
                 IT2M1 = NB
             else
                 IT2M1 = IT2 - 1
             endif
 
-            U(IT2-1,1)=R(IT2,1)-R(IT2-1,1)
-            U(IT2-1,2)=R(IT2,2)-R(IT2-1,2)
-            U(IT2-1,3)=R(IT2,3)-R(IT2-1,3)
+            U0(IT2-1,1)=R(IT2,1)-R(IT2-1,1)
+            U0(IT2-1,2)=R(IT2,2)-R(IT2-1,2)
+            U0(IT2-1,3)=R(IT2,3)-R(IT2-1,3)
             UNORM=sqrt(U(IT2-1,1)**2.+U(IT2-1,2)**2.+U(IT2-1,3)**2.)
-            U(IT2-1,1)=U(IT2-1,1)/UNORM
-            U(IT2-1,2)=U(IT2-1,2)/UNORM
-            U(IT2-1,3)=U(IT2-1,3)/UNORM
+            U0(IT2-1,1)=U0(IT2-1,1)/UNORM
+            U0(IT2-1,2)=U0(IT2-1,2)/UNORM
+            U0(IT2-1,3)=U0(IT2-1,3)/UNORM
 
-            U(IT2,1)=R(IT2+1,1)-R(IT2,1)
-            U(IT2,2)=R(IT2+1,2)-R(IT2,2)
-            U(IT2,3)=R(IT2+1,3)-R(IT2,3)
-            UNORM=sqrt(U(IT2,1)**2.+U(IT2,2)**2.+U(IT2,3)**2.)
-            U(IT2,1)=U(IT2,1)/UNORM
-            U(IT2,2)=U(IT2,2)/UNORM
-            U(IT2,3)=U(IT2,3)/UNORM
+            U0(IT2,1)=R(IT2+1,1)-R(IT2,1)
+            U0(IT2,2)=R(IT2+1,2)-R(IT2,2)
+            U0(IT2,3)=R(IT2+1,3)-R(IT2,3)
+            UNORM=sqrt(U0(IT2,1)**2.+U0(IT2,2)**2.+U0(IT2,3)**2.)
+            U0(IT2,1)=U0(IT2,1)/UNORM
+            U0(IT2,2)=U0(IT2,2)/UNORM
+            U0(IT2,3)=U0(IT2,3)/UNORM
 
-            UP(IT2-1,1)=RP(IT2,1)-RP(IT2-1,1)
-            UP(IT2-1,2)=RP(IT2,2)-RP(IT2-1,2)
-            UP(IT2-1,3)=RP(IT2,3)-RP(IT2-1,3)
-            UNORM=sqrt(UP(IT2-1,1)**2.+UP(IT2-1,2)**2.+UP(IT2-1,3)**2.)
-            UP(IT2-1,1)=UP(IT2-1,1)/UNORM
-            UP(IT2-1,2)=UP(IT2-1,2)/UNORM
-            UP(IT2-1,3)=UP(IT2-1,3)/UNORM
+            UP0(IT2-1,1)=RP(IT2,1)-RP(IT2-1,1)
+            UP0(IT2-1,2)=RP(IT2,2)-RP(IT2-1,2)
+            UP0(IT2-1,3)=RP(IT2,3)-RP(IT2-1,3)
+            UNORM=sqrt(UP0(IT2-1,1)**2.+UP0(IT2-1,2)**2.+UP0(IT2-1,3)**2.)
+            UP0(IT2-1,1)=UP0(IT2-1,1)/UNORM
+            UP0(IT2-1,2)=UP0(IT2-1,2)/UNORM
+            UP0(IT2-1,3)=UP0(IT2-1,3)/UNORM
 
-            U1U2=U(IT2-1,1)*U(IT2,1)+U(IT2-1,2)*U(IT2,2)+U(IT2-1,3)*U(IT2,3)
+            U1U2=U0(IT2-1,1)*U0(IT2,1)+U0(IT2-1,2)*U0(IT2,2)+U0(IT2-1,3)*U0(IT2,3)
             DEELAS(1)=DEELAS(1)+EB*U1U2
-            U1U2=UP(IT2-1,1)*U(IT2,1)+UP(IT2-1,2)*U(IT2,2)+UP(IT2-1,3)*U(IT2,3)
+            U1U2=UP0(IT2-1,1)*U0(IT2,1)+UP0(IT2-1,2)*U0(IT2,2)+UP0(IT2-1,3)*U0(IT2,3)
             DEELAS(1)=DEELAS(1)-EB*U1U2
 
          elseif (SIMTYPE.EQ.2) then
 
-            DR(1)=R(IT2+1,1)-R(IT2,1)
-            DR(2)=R(IT2+1,2)-R(IT2,2)
-            DR(3)=R(IT2+1,3)-R(IT2,3)
+            DR(1)=R(IT2P1,1)-R(IT2,1)
+            DR(2)=R(IT2P1,2)-R(IT2,2)
+            DR(3)=R(IT2P1,3)-R(IT2,3)
             DRPAR=DR(1)*U(IT2,1)+DR(2)*U(IT2,2)+DR(3)*U(IT2,3)
 
             DRPERP(1)=DR(1)-DRPAR*U(IT2,1)
@@ -220,17 +227,17 @@ DOUBLE PRECISION GI(3)
             DRPERP(3)=DR(3)-DRPAR*U(IT2,3)
             !U1U2=U(IT2,1)*U(IT2+1,1)+U(IT2,2)*U(IT2+1,2)+U(IT2,3)*U(IT2+1,3)
 
-            GI(1)=(U(IT2+1,1)-U(IT2,1)-ETA*DRPERP(1))
-            GI(2)=(U(IT2+1,2)-U(IT2,2)-ETA*DRPERP(2))
-            GI(3)=(U(IT2+1,3)-U(IT2,3)-ETA*DRPERP(3))
+            GI(1)=(U(IT2P1,1)-U(IT2,1)-ETA*DRPERP(1))
+            GI(2)=(U(IT2P1,2)-U(IT2,2)-ETA*DRPERP(2))
+            GI(3)=(U(IT2P1,3)-U(IT2,3)-ETA*DRPERP(3))
 
             DEELAS(1)=DEELAS(1)-0.5_dp*EB*(GI(1)**2.+GI(2)**2.+GI(3)**2.)
             DEELAS(2)=DEELAS(2)-0.5_dp*EPAR*(DRPAR-GAM)**2.
             DEELAS(3)=DEELAS(3)-0.5_dp*EPERP*(DRPERP(1)**2.+DRPERP(2)**2.+DRPERP(3)**2.)
 
-            DR(1)=R(IT2+1,1)-RP(IT2,1)
-            DR(2)=R(IT2+1,2)-RP(IT2,2)
-            DR(3)=R(IT2+1,3)-RP(IT2,3)
+            DR(1)=R(IT2P1,1)-RP(IT2,1)
+            DR(2)=R(IT2P1,2)-RP(IT2,2)
+            DR(3)=R(IT2P1,3)-RP(IT2,3)
             DRPAR=DR(1)*UP(IT2,1)+DR(2)*UP(IT2,2)+DR(3)*UP(IT2,3)
 
             DRPERP(1)=DR(1)-DRPAR*UP(IT2,1)
@@ -238,9 +245,9 @@ DOUBLE PRECISION GI(3)
             DRPERP(3)=DR(3)-DRPAR*UP(IT2,3)
             !U1U2=UP(IT2,1)*U(IT2+1,1)+UP(IT2,2)*U(IT2+1,2)+UP(IT2,3)*U(IT2+1,3)
 
-            GI(1)=(U(IT2+1,1)-UP(IT2,1)-ETA*DRPERP(1))
-            GI(2)=(U(IT2+1,2)-UP(IT2,2)-ETA*DRPERP(2))
-            GI(3)=(U(IT2+1,3)-UP(IT2,3)-ETA*DRPERP(3))
+            GI(1)=(U(IT2P1,1)-UP(IT2,1)-ETA*DRPERP(1))
+            GI(2)=(U(IT2P1,2)-UP(IT2,2)-ETA*DRPERP(2))
+            GI(3)=(U(IT2P1,3)-UP(IT2,3)-ETA*DRPERP(3))
 
             DEELAS(1)=DEELAS(1)+0.5_dp*EB*(GI(1)**2.+GI(2)**2+GI(3)**2)
             DEELAS(2)=DEELAS(2)+0.5_dp*EPAR*(DRPAR-GAM)**2.
@@ -261,14 +268,14 @@ DOUBLE PRECISION GI(3)
 
       endif
 
-      IF (RING.EQ.1.AND.TWIST.EQ.1) THEN
+      IF (RING.AND.TWIST) THEN
           IF (MCTYPE.EQ.1) THEN
-              CALL WRITHECRANK(R,IT1,IT2,N,WRM)
-              CALL WRITHECRANK(RP,IT1,IT2,N,WRMP)
+              CALL WRITHECRANK(R,IT1,IT2,NB,WRM)
+              CALL WRITHECRANK(RP,IT1,IT2,NB,WRMP)
               DWR=WRMP-WRM
           ELSEIF (MCTYPE.EQ.2) THEN
-              CALL WRITHESLIDE(R,IT1,IT2,N,WRM)
-              CALL WRITHESLIDE(RP,IT1,IT2,N,WRMP)
+              CALL WRITHESLIDE(R,IT1,IT2,NB,WRM)
+              CALL WRITHESLIDE(RP,IT1,IT2,NB,WRMP)
               DWR=WRMP-WRM
           ELSE
               DWR=0.

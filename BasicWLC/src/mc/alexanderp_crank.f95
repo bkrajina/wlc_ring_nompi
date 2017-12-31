@@ -1,4 +1,4 @@
-!This subroutine calculates the alexander polynomial of a chain represented by a set of 
+!This subroutine calculates the alexander polynomial of a chain represented by a set of
 !discrete beads after a crankshaft move has been performed. The routine updates the values
 !in the Cross matrix that change during the move. This subroutine currently only works if there
 !is one polymer
@@ -26,7 +26,7 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
   DOUBLE PRECISION RP(N,3)      ! projection of R onto plane defined by NV
   DOUBLE PRECISION RDOTN(N)        ! Dot product of R and NV
   INTEGER Ndegen                ! number of crossings for a given segment
-  INTEGER I,J,K,IP1,JP1,KP1           ! iteration indices
+  INTEGER I,J,K,KP1           ! iteration indices
   DOUBLE PRECISION smax,tmax    ! length of segments in the projection
   DOUBLE PRECISION ui(3),uj(3)  ! tangent vectors of segments in the projection
   DOUBLE PRECISION udot         ! dot product of tangents in the projection
@@ -42,12 +42,6 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
   INTEGER index,IND
   INTEGER II,IO,IIP1,IOP1
   LOGICAL Copy
-
-  !Performance testing for development
-  DOUBLE PRECISION TIME1
-  DOUBLE PRECISION TIME2
-  DOUBLE PRECISION DT_PRUNE
-  DOUBLE PRECISION DT_INTERSECT
 
 
   !Set the normal vector for the plane of projection. Currently set to parallel to z axis
@@ -66,7 +60,7 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
   ENDDO
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !Update Cross matrix by removing all instances in which segments that are in the rotated 
+  !Update Cross matrix by removing all instances in which segments that are in the rotated
   !segment appear. This is done by copying to a new matrix only the crossings that don't
   !involve the portion of the chain that was moved
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -207,7 +201,7 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
            trint=tint/cos(thetaj)
 
            !Determine whether this is an undercrossing or an overcrossing.
-           !Save the indices appropriately (the index of the undercrossing segment 
+           !Save the indices appropriately (the index of the undercrossing segment
            !must come first
 
            IF (R(II,3)+uri(3)*srint<r(IO,3)+urj(3)*trint) THEN
@@ -286,7 +280,7 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
            trint=tint/cos(thetaj)
 
            !Determine whether this is an undercrossing or an overcrossing.
-           !Save the indices appropriately (the index of the undercrossing segment 
+           !Save the indices appropriately (the index of the undercrossing segment
            !must come first
 
            IF (R(II,3)+uri(3)*srint<r(IO,3)+urj(3)*trint) THEN
@@ -366,7 +360,7 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
         !If J lies between cross K and cross K+1, then it is segment K+1
         IF (J.GT.nint(Cross(K,1)).AND.J.LT.nint(Cross(K+1,1))) THEN
            over_ind(I)=K+1
-           GOTO 30 
+           GOTO 30
            !If J=K, then segment j contains undercrossings
            ! then need to determine where overpass lies relative to undercrossing
         ELSEIF (J.EQ.nint(CROSS(K,1))) THEN
@@ -376,10 +370,10 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
            !of segment j
            IF (t.LE.Cross(K,3)) THEN
               over_ind(I)=K
-              GOTO 30 
+              GOTO 30
            ELSEIF (t.GE.Cross(K+Ndegen-1,3)) THEN
               OVER_IND(I)=K+Ndegen
-              GOTO 30 
+              GOTO 30
               !Otherwise, determine which under-crossings t lies between
            ELSE
               IND=1
@@ -387,10 +381,10 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
               DO WHILE (IND.LT.Ndegen)
                  !if t lies between the s of undercrossing k+ind-1 and the next,
                  !then this over_pass has a new index of k+ind in the re-indexing
-                 !scheme 
+                 !scheme
                  IF (t.GT.Cross(K+IND-1,3).AND.t.LT.CROSS(k+IND,3)) THEN
                     over_ind(I)=K+IND
-                    GOTO 30 
+                    GOTO 30
                  ENDIF
                  IND=IND+1
               ENDDO
@@ -404,8 +398,8 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
 
 
   !Calculate the Alexander matrix evaluated at t=-1
-  ! Note that the Alexander matrix is correct only up to 
-  ! a factor of +-1. Since the alexander polynomial evaluated 
+  ! Note that the Alexander matrix is correct only up to
+  ! a factor of +-1. Since the alexander polynomial evaluated
   ! at t=-1 is always positive, take the absolute value of the
   ! determinant
 
@@ -429,7 +423,7 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
      IF (I.EQ.K.OR.I.EQ.KP1) THEN
         A(K,K)=-1.
         A(K,KP1)=1.
-     ELSE 
+     ELSE
         A(K,K)=1.
         A(K,KP1)=1.
         A(K,I)=-2.
@@ -437,14 +431,14 @@ SUBROUTINE alexanderp_crank(R,N,Delta,Cross,CrossSize,NCross,IT1,IT2,DIB)
 
   ENDDO
 
-  !Calculate the determinant of the matrix with one row and one column removed 
+  !Calculate the determinant of the matrix with one row and one column removed
 
 
   !If A has one crossing or less, it is the trivial knot
 
   IF (Ncross.LE.1) THEN
      delta_double=1.
-  ELSE 
+  ELSE
      CALL abs_determinant(A(1:Ncross-1,1:Ncross-1),NCross-1,delta_double)
   ENDIF
 

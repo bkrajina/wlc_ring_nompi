@@ -3,6 +3,7 @@ MODULE INPUTPARAMS
 
   IMPLICIT NONE
   INTEGER, PARAMETER :: MAXLINELEN = 500 ! maximum length of an input line
+  INTEGER, PARAMETER :: MAXPARAMLEN = 100 ! max length of param name/value
   ! current line read in from the input file
   CHARACTER(LEN=MAXLINELEN) :: CURLINE
   INTEGER :: CURPOS ! current position in that line
@@ -34,7 +35,7 @@ CONTAINS
     CURLINE = ''
     LINELEN = 0
     DO WHILE (LINELEN.LT.MAXLINELEN) ! read until no longer hit line continuation
-       READ(FILEUNIT,'(A)',IOSTAT=IOS) ADDLINE       
+       READ(FILEUNIT,'(A)',IOSTAT=IOS) ADDLINE
        IF (IOS.GT.0) THEN
           PRINT*, 'ERROR IN READLINE: some problem with reading in line from input file. IOS = ', IOS
           STOP 1
@@ -45,9 +46,9 @@ CONTAINS
 
        ! Check for line continuation, then add on the line
        ADDLEN = LEN(TRIM(ADDLINE))
-       
+
        IF (ADDLEN.GT.2) THEN
-          IF (ADDLINE(ADDLEN-2:ADDLEN).EQ.'+++') THEN             
+          IF (ADDLINE(ADDLEN-2:ADDLEN).EQ.'+++') THEN
              CURLINE = CURLINE(1:LINELEN) // ADDLINE(1:ADDLEN-3)
              LINELEN = LINELEN + ADDLEN-3
           ELSE
@@ -60,12 +61,12 @@ CONTAINS
           LINELEN = LINELEN + ADDLEN
           EXIT
        ENDIF
-       
-    ENDDO   
+
+    ENDDO
 
     NITEMS = 0
     CURPOS = 1
-    CALL ADVANCECURPOS    
+    CALL ADVANCECURPOS
     DO WHILE (CURPOS.LE.MAXLINELEN)
        NITEMS = NITEMS + 1 ! found an item
 
@@ -115,13 +116,13 @@ CONTAINS
     SPACEIND = SPACEIND+CURPOS-1
 
     STR = CURLINE(CURPOS:SPACEIND-1)
-    
+
     STR = ADJUSTL(STR)
 
     ! move current position to next non-space character
     CURPOS = SPACEIND
     CALL ADVANCECURPOS
-   
+
     IF (PRESENT(CASESET)) THEN
        IF (CASESET.LT.0) THEN
           ! convert to lowercase
@@ -132,7 +133,7 @@ CONTAINS
        ENDIF
     ENDIF
   END SUBROUTINE READA
-  
+
   SUBROUTINE READU(STR)
     ! uppercase read-in routine for backwards compatibility to old input code
     IMPLICIT NONE
@@ -152,7 +153,7 @@ CONTAINS
   SUBROUTINE LOWERCASE(STR)
     ! convert all uppercase characters in a string to lowercase
     IMPLICIT NONE
-    
+
     CHARACTER(LEN=*), INTENT(INOUT) :: STR
     INTEGER :: LSTR, I, LETIND
 
@@ -169,7 +170,7 @@ CONTAINS
   SUBROUTINE UPPERCASE(STR)
     ! convert all lowercase characters in a string to uppercase
     IMPLICIT NONE
-    
+
     CHARACTER(LEN=*), INTENT(INOUT) :: STR
     INTEGER :: LSTR, I, LETIND
 
@@ -189,13 +190,13 @@ CONTAINS
 
     IMPLICIT NONE
     DOUBLE PRECISION, INTENT(OUT) :: ANS
-    CHARACTER*100 :: BASESTR, EXPSTR, STR, FMTSTR, FMTSTR1, FMTSTR2
+    CHARACTER(MAXPARAMLEN) :: BASESTR, EXPSTR, STR, FMTSTR, FMTSTR1, FMTSTR2
     INTEGER :: EXPIND, PTIND, STRLEN, EXPNUM, err
     DOUBLE PRECISION :: BASENUM
 
     ! read in as a string, making exponential designators uppercase
     CALL READA(STR,CASESET=1)
-        
+
     ! find index of exponential designator
     EXPIND = INDEX(STR,'D',.FALSE.)
     IF (EXPIND.EQ.0) THEN
@@ -210,10 +211,10 @@ CONTAINS
     ELSE
        BASESTR = STR(1:EXPIND-1)
        EXPSTR = STR(EXPIND+1:LEN(STR))
-    ENDIF    
-    
+    ENDIF
+
     ! find decimal point in base number
-    PTIND = INDEX(BASESTR,'.',.FALSE.)    
+    PTIND = INDEX(BASESTR,'.',.FALSE.)
 
     ! format specifier for reading in decimal base number
     STRLEN = LEN(TRIM(BASESTR))
@@ -225,22 +226,22 @@ CONTAINS
     ENDIF
 
     FMTSTR = '(F' // TRIM(ADJUSTL(FMTSTR1))// '.' // TRIM(ADJUSTL(FMTSTR2)) // ')'
-  
+
     ! read in the base number
     READ(BASESTR,FMTSTR,IOSTAT=ERR) BASENUM
-    
+
     IF (ERR.NE.0) THEN
        PRINT*, 'ERROR IN READF: something wrong with reading base number  as float:.'
        PRINT*, 'attempted to read: ', BASESTR
        PRINT*, 'ERROR CODE:', ERR
        STOP 1
     ENDIF
-    
+
     ! read in the exponential number
     STRLEN = LEN(TRIM(EXPSTR))
     WRITE(FMTSTR1,'(I10)') STRLEN
     FMTSTR = '(I'//TRIM(ADJUSTL(FMTSTR1))//')'
-    
+
     READ(EXPSTR,FMTSTR,IOSTAT=ERR) EXPNUM
 
     IF (ERR.NE.0) THEN
@@ -248,10 +249,10 @@ CONTAINS
        PRINT*, 'attempted to read: ', EXPSTR
        PRINT*, 'ERROR CODE:', ERR
        STOP 1
-    ENDIF    
+    ENDIF
 
     ANS = BASENUM*10D0**(EXPNUM)
-        
+
   END SUBROUTINE READF
 
   SUBROUTINE READI(ANS)
@@ -261,13 +262,13 @@ CONTAINS
 
     IMPLICIT NONE
     INTEGER, INTENT(OUT) :: ANS
-    CHARACTER*100 :: BASESTR, EXPSTR, STR, FMTSTR, FMTSTR1!, FMTSTR2
+    CHARACTER(MAXPARAMLEN) :: BASESTR, EXPSTR, STR, FMTSTR, FMTSTR1!, FMTSTR2
     INTEGER :: EXPIND, STRLEN, BASENUM,EXPNUM, err
     DOUBLE PRECISION :: EXPLIM
-    
+
     ! read in as a string, making exponential designators uppercase
     CALL READA(STR,CASESET=1)
-        
+
     ! find index of exponential designator
     EXPIND = INDEX(STR,'D',.FALSE.)
     IF (EXPIND.EQ.0) THEN
@@ -282,7 +283,7 @@ CONTAINS
     ELSE
        BASESTR = STR(1:EXPIND-1)
        EXPSTR = STR(EXPIND+1:LEN(STR))
-    ENDIF    
+    ENDIF
 
      ! read in the base number
     STRLEN = LEN(TRIM(BASESTR))
@@ -300,7 +301,7 @@ CONTAINS
     ! read in the exponent
     STRLEN = LEN(TRIM(EXPSTR))
     WRITE(FMTSTR1,'(I10)') STRLEN
-    FMTSTR = '(I'//TRIM(ADJUSTL(FMTSTR1))//')'    
+    FMTSTR = '(I'//TRIM(ADJUSTL(FMTSTR1))//')'
     READ(EXPSTR,FMTSTR,IOSTAT=ERR) EXPNUM
 
     IF (ERR.NE.0) THEN
@@ -330,7 +331,7 @@ CONTAINS
     ENDIF
 
     ANS = BASENUM*10**(EXPNUM)
-        
+
   END SUBROUTINE READI
 
   SUBROUTINE READO(ANS)
@@ -341,10 +342,10 @@ CONTAINS
 
     IMPLICIT NONE
     LOGICAL, INTENT(OUT) :: ANS
-    CHARACTER*100 :: STR
+    CHARACTER(MAXPARAMLEN) :: STR
 
     ! read in as a string, making uppercase
-    CALL READA(STR,CASESET=1)    
+    CALL READA(STR,CASESET=1)
 
     IF (STR.EQ.'T'.OR.STR.EQ.'1'.OR.STR.EQ.'TRUE') THEN
        ANS = .TRUE.
@@ -354,7 +355,7 @@ CONTAINS
        PRINT*, 'ERROR IN READO: failed to read string as logical. Logical string must be T, F, TRUE, FALSE, 0, or 1'
        print*, 'Attempted to read in: ', str
        stop 1
-    ENDIF      
+    ENDIF
 
   END SUBROUTINE READO
 
