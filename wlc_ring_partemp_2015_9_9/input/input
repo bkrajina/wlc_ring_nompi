@@ -75,10 +75,10 @@
 
  !-Record 19
  !  NINIT          Number initialization MC steps
-  100000
+  100
 
  !-Record 20
  !  NSTEP          Number MC steps per save
-  1000
+  10
 
  ! ----------------------------------------------------
