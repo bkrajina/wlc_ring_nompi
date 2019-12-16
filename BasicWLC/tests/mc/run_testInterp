@@ -1,2 +1,0 @@
-gfortran test_interp.f95 MC_interp.f95 -o interp.out
-./interp.out
